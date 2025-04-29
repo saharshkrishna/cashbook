@@ -137,7 +137,7 @@ const DebitModal = ({ onClose, type, onSubmit }) => {
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
+                  className="w-3/4 p-2 border rounded-lg"
                   required
                 />
               </div>
@@ -172,7 +172,7 @@ const DebitModal = ({ onClose, type, onSubmit }) => {
                   placeholder="eg. 890 or 100 + 200*3"
                   value={inputValue}
                   onChange={handleAmountChange}
-                  className="w-full p-2 border rounded-lg"
+                  className="w-1/2 p-2 border rounded-lg"
                   required
                 />
               </div>
@@ -214,7 +214,7 @@ const DebitModal = ({ onClose, type, onSubmit }) => {
                 placeholder="e.g. Enter Details (Name, Bill No, Item Name, Quantity etc)"
                 value={formData.remarks}
                 onChange={(e) => setFormData((prev) => ({ ...prev, remarks: e.target.value }))}
-                className="w-full p-2 border rounded-lg"
+                className="w-3/4 p-2 border rounded-lg"
               />
             </div>
 

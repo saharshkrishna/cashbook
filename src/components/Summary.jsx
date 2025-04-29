@@ -1,6 +1,6 @@
 import PropTypes from "prop-types";
 
-const Summary = ({ tableData, filters }) => {
+const Summary = ({ tableData, filters, }) => {
   console.log("Table Data in Summary:", tableData); // Debugging
   console.log("Filters in Summary:", filters); // Debugging
 
@@ -16,12 +16,13 @@ const Summary = ({ tableData, filters }) => {
   .reduce((sum, entry) => sum + parseFloat(entry.amount || 0), 0);
   console.log("Total Debit:", totalDebit); // Debugging
 
-  const creditEntries = tableData
-  .filter((entry) => entry.type === "Credit");
+  const creditEntries = tableData.filter((entry) => entry.type === "Credit");
   console.log("Credit Entries:", creditEntries); // Debugging
-  const totalCredit = creditEntries
-  .reduce((sum, entry) => sum + parseFloat(entry.amount || 0), 0);
-  console.log("Total Credit:", totalCredit); // Debugging
+  const totalCredit = creditEntries.reduce(
+    (sum, entry) => sum + parseFloat(entry.amount || 0),
+    0
+  );
+  console.log("Total Credit:", totalCredit);
 
   const totalLoan = filters
     .filter((entry) => entry.type === "Loan")
@@ -42,51 +43,54 @@ const Summary = ({ tableData, filters }) => {
 
   return (
     <div className="grid grid-cols-7 gap-[8px] mb-3">
-      <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Credit</div>
-        <div className="text-2xl font-semibold text-green-600">
-          {totalCredit.toFixed(2)}
-        </div>
-      </div>
+      
 
       <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Debit</div>
-        <div className="text-2xl font-semibold text-green-600">
-          {totalDebit.toFixed(2)}
-        </div>
-      </div>
-
-      <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Loan Re</div>
-        <div className="text-2xl font-semibold text-green-600">
+        <div className="text-[12.5px] text-gray-600 mb-1">Loan Re</div>
+        <div className="text-[16px] font-semibold text-green-600">
           {totalLoanRe.toFixed(2)}
         </div>
       </div>
 
       <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Loan</div>
-        <div className="text-2xl font-semibold text-red-600">
+        <div className="text-[12.5px] text-gray-600 mb-1">Loan</div>
+        <div className="text-[16px] font-semibold text-red-600">
           {totalLoan.toFixed(2)}
         </div>
       </div>
 
       <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Cash In</div>
-        <div className="text-2xl font-semibold text-green-600">
+        <div className="text-[12.5px] text-gray-600 mb-1">Debit</div>
+        <div className="text-[16px] font-semibold text-green-600">
+          {totalDebit.toFixed(2)}
+        </div>
+      </div>
+
+      <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
+        <div className="text-[12.5px] text-gray-600 mb-1">Credit</div>
+        <div className="text-[16px] font-semibold text-blue-600">
+          {totalCredit.toFixed(2)}
+        </div>
+      </div>
+
+
+      <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
+        <div className="text-[12.5px] text-gray-600 mb-1">Cash In</div>
+        <div className="text-[16px] font-semibold text-green-600">
           {totalCashIn.toFixed(2)}
         </div>
       </div>
 
       <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Cash Out</div>
-        <div className="text-2xl font-semibold text-red-600">
+        <div className="text-[12.5px] text-gray-600 mb-1">Cash Out</div>
+        <div className="text-[16px] font-semibold text-red-600">
           {totalCashOut.toFixed(2)}
         </div>
       </div>
 
       <div className="bg-white p-2 w-[130px] rounded-lg shadow-sm">
-        <div className="text-sm text-gray-600 mb-1">Net Balance</div>
-        <div className="text-2xl font-semibold">{netBalance.toFixed(2)}</div>
+        <div className="text-[12.5px] text-gray-600 mb-1">Net Balance</div>
+        <div className="text-[16px] font-semibold">{netBalance.toFixed(2)}</div>
       </div>
     </div>
   );

@@ -29,6 +29,7 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
 
   const handleEditClick = () => {
     // Determine which modal to open based on the entry type
+    console.log("Opening edit modal with entry:", entry);
     switch (entry.type) {
       case "Cash In":
         setModalToOpen("CashinModal");
@@ -47,11 +48,13 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
     }
   };
 
+  console.log("entryee",entry)
   const handleModalClose = () => {
     setModalToOpen(null); // Close the modal
   };
 
   const handleSave = (updatedEntry) => {
+    console.log("Updated Entry in handleSave:", updatedEntry);
     onEdit(updatedEntry); // Pass the updated entry to the parent component
     setModalToOpen(null); // Close the modal
   };
@@ -94,13 +97,12 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
             <label className="block text-gray-500 mb-1">Party Name</label>
             <div className="flex gap-2">
               <span>{entry.partyName}</span>
-              <span className="text-gray-500">({entry.partyType})</span>
             </div>
           </div>
 
           <div>
             <label className="block text-gray-500 mb-1">Remark</label>
-            <div>{entry.remark}</div>
+            <div>{entry.remarks}</div>
           </div>
 
           <div className="flex gap-2 my-4">
@@ -114,27 +116,48 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
                 </span>
               ))}
           </div>
-           {/* Display Attached Files */}
-            {entry.bills && entry.bills.length > 0 && (
-              <div>
-                <label className="block text-gray-500 mb-1">Attached Bills</label>
-                <div className="flex flex-wrap gap-2">
-                  {entry.bills.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
-                      <span>📎</span> {/* Icon for the file */}
-                      <span className="text-sm text-gray-700">{file.name}</span> {/* File name */}
-                      {/* Optional: Add a button to view/download the file */}
-                      <button
-                        onClick={() => window.open(URL.createObjectURL(file), "_blank")}
-                        className="text-sm text-blue-500 hover:underline"
-                      >
-                        View
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+       {/* Display Attached Files */}
+<div>
+  <label className="block text-gray-500 mb-1">Attached Bills</label>
+
+  {Array.isArray(entry.files) && entry.files.length > 0 ? (
+    <div className="flex flex-wrap gap-2">
+      {entry.files.map((file, index) => {
+        console.log("Attached files:", entry.files);
+        const fileURL = `http://localhost:5000/uploads/${file}`; // Ensure correct path
+
+        return (
+          <div key={index} className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
+            <span>📎</span> {/* Icon for the file */}
+            <span className="text-sm text-gray-700">{file}</span> {/* File name */}
+
+            {/* View Button - Opens file in a new tab */}
+            <button
+              onClick={() => window.open(fileURL, "_blank")}
+              className="text-sm text-blue-500 hover:underline"
+            >
+              View
+            </button>
+
+            {/* Download Button - Allows downloading the file */}
+            <a
+              href={fileURL}
+              download={file}
+              className="text-sm text-green-500 hover:underline"
+            >
+              Download
+            </a>
+          </div>
+        );
+      })}
+    </div>
+  ) : (
+    <p className="text-black-500">No files attached</p>
+  )}
+</div>
+
+
+
           </div>
 
         <div className="my-6">
@@ -165,14 +188,10 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
           </div>
         </div>
 
-        <div className="flex justify-between pt-4 border-t border-gray-200">
-            <button className="flex items-center gap-2 text-danger px-4 py-2">
-              <span>🗑</span>
-              Delete
-            </button>
+        <div className="flex pt-4 border-t border-gray-200 justify-end">
             <div className="flex gap-2">
               <button
-                className="py-2 px-4 border border-gray-200 rounded"
+                className="py-2 px-4 border border-gray-200 rounded text-white bg-blue-400"
                 onClick={handleEditClick}
               >
                 <span>✎</span>
@@ -182,7 +201,6 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
           </div>
         </div>
 
-      {/* Render the appropriate modal based on modalToOpen */}
       {modalToOpen === "CashinModal" && (
         <CashinModal
           onClose={handleModalClose}
@@ -194,6 +212,7 @@ const EntryDetails = ({ isOpen, onClose, entry, onEdit }) => {
 
       {modalToOpen === "CashoutModal" && (
         <CashoutModal
+        key={entry._id}
           onClose={handleModalClose}
           type={entry.type}
           onSubmit={handleSave}

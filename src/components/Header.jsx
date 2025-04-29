@@ -7,7 +7,7 @@ const Header = () => {
       <button className="p-2">
         <FiChevronLeft className="text-xl" />
       </button>
-      <h1 className="text-2xl font-semibold">January Expenses</h1>
+      <h1 className="text-[20px] font-semibold">January Expenses</h1>
     </div>
     <div className="flex items-center gap-4">
       <button className="flex items-center gap-2 text-blue-600">

@@ -1,72 +1,70 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import PropTypes from "prop-types";
+import { DataContext } from "../context/DataContext";
 import DateModal from "./modal/DateModal"; // Import the modal
 
-const Filters = ({ tableData, onFilterChange }) => {
+const Filters = ({ onFilterChange, }) => {
+  const [selectedFilters, setSelectedFilters] = useState({
+    duration: "All Time",
+    type: "All",
+    party: "All",
+    paymentMode: "All",
+    category: "All",
+    startDate: "",
+    endDate: "",
+  });
+
   const [selectedDuration, setSelectedDuration] = useState("All Time");
   const [selectedType, setSelectedType] = useState("All");
   const [selectedParty, setSelectedParty] = useState("All");
-  // const [selectedMember, setSelectedMember] = useState("All");
   const [selectedPaymentMode, setSelectedPaymentMode] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [isDateModalOpen, setIsDateModalOpen] = useState(false); // State for modal visibility
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const { parties, categories, paymentModes, loading, error } = useContext(DataContext);
 
-  // Extract unique values for dropdown options
-  const uniqueParties = [...new Set(tableData.map((entry) => entry.partyName))];
-  // const uniqueMembers = [...new Set(tableData.map((entry) => entry.member))];
-  const uniquePaymentModes = [...new Set(tableData.map((entry) => entry.paymentMode))];
-  const uniqueCategories = [...new Set(tableData.map((entry) => entry.category))];
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error}</div>;
 
   // Handle filter changes
-  const handleFilterChange = (filterType, value) => {
-    switch (filterType) {
-      case "duration":
-        setSelectedDuration(value);
-        if (value === "Custom Range") {
-          setIsDateModalOpen(true); // Open the modal when "Custom Range" is selected
-        } else {
-          // Reset dates if duration is not "Custom Range"
-          setStartDate("");
-          setEndDate("");
-          onFilterChange({
-            duration: value,
-            type: selectedType,
-            party: selectedParty,
-            // member: selectedMember,
-            paymentMode: selectedPaymentMode,
-            category: selectedCategory,
-            startDate: "",
-            endDate: "",
-          });
-        }
-        break;
-      case "type":
-        setSelectedType(value);
-        break;
-      case "party":
-        setSelectedParty(value);
-        break;
-      // case "member":
-      //   setSelectedMember(value);
-      //   break;
-      case "paymentMode":
-        setSelectedPaymentMode(value);
-        break;
-      case "category":
-        setSelectedCategory(value);
-        break;
-      default:
-        break;
-    }
+ const handleFilterChange = (filterType, value) => {
+  const updatedFilters = { ...selectedFilters, [filterType]: value };
 
-    // Pass the updated filters to the parent component
+  setSelectedFilters(updatedFilters);
+  onFilterChange(updatedFilters);
+
+  switch (filterType) {
+    case "duration":
+      setSelectedDuration(value);
+      if (value === "Custom Range") {
+        setIsDateModalOpen(true);
+      } else {
+        setStartDate("");
+        setEndDate("");
+      }
+      break;
+    case "type":
+      setSelectedType(value);
+      break;
+    case "party":
+      setSelectedParty(value);
+      break;
+    case "paymentMode":
+      setSelectedPaymentMode(value);
+      break;
+    case "category":
+      setSelectedCategory(value);
+      break;
+    default:
+      break;
+  }
+
+
     onFilterChange({
       duration: filterType === "duration" ? value : selectedDuration,
       type: filterType === "type" ? value : selectedType,
       party: filterType === "party" ? value : selectedParty,
-      // member: filterType === "member" ? value : selectedMember,
       paymentMode: filterType === "paymentMode" ? value : selectedPaymentMode,
       category: filterType === "category" ? value : selectedCategory,
       startDate: filterType === "duration" && value === "Custom Range" ? startDate : "",
@@ -74,73 +72,85 @@ const Filters = ({ tableData, onFilterChange }) => {
     });
   };
 
- // Handle date selection from the modal
- const handleDateSelection = ({ startDate, endDate }) => {
-  setStartDate(startDate);
-  setEndDate(endDate);
-  setSelectedDuration("Custom Range"); // Update duration to "Custom Range"
-
-    // Pass the selected dates to the parent component
-    onFilterChange({
-      duration: "Custom Range",
-      type: selectedType,
-      party: selectedParty,
-      // member: selectedMember,
-      paymentMode: selectedPaymentMode,
-      category: selectedCategory,
-      startDate,
-      endDate,
-    });
-    setIsDateModalOpen(false); // Close the modal
+  const handleResetFilters = () => {
+    const defaultFilters = {
+      duration: "All Time",
+      type: "All",
+      party: "All",
+      paymentMode: "All",
+      category: "All",
+      startDate: "",
+      endDate: "",
+    };
+  
+    setSelectedFilters(defaultFilters);
+    setSelectedDuration("All Time");
+    setSelectedType("All");
+    setSelectedParty("All");
+    setSelectedPaymentMode("All");
+    setSelectedCategory("All");
+    setStartDate("");
+    setEndDate("");
+  
+    onFilterChange(defaultFilters);
   };
+  
 
   const handleDurationChange = (e) => {
     const value = e.target.value;
-    setSelectedDuration(value);
+    setSelectedFilters((prev) => ({ ...prev, duration: value })); // ✅ Ensure state is updated
+  
     if (value === "Custom Range") {
       setIsDateModalOpen(true);
     } else {
-      onFilterChange({ duration: value, startDate: "", endDate: "" });
+      onFilterChange({
+        ...selectedFilters, // ✅ Keep previous filters
+        duration: value,
+        startDate: "",
+        endDate: "",
+      });
     }
   };
+  
+  const handleDateSelection = ({ startDate, endDate }) => {
+    const updatedFilters = {
+      ...selectedFilters,
+      duration: "Custom Range",
+      startDate,
+      endDate,
+    };
+  
+    setStartDate(startDate);
+    setEndDate(endDate);
+    setSelectedFilters(updatedFilters);
+    onFilterChange(updatedFilters);
+    setIsDateModalOpen(false);
+  };
+  
 
   const handleDateModalClose = () => {
     setIsDateModalOpen(false);
   };
 
-  // Display the selected date range or single date inside the duration dropdown button
-  const getDurationLabel = () => {
-    if (selectedDuration === "Custom Range" && startDate && endDate) {
-      return `Custom Range: ${startDate} to ${endDate}`;
-    }
-    return `Duration: ${selectedDuration}`;
-  };
+  
 
   return (
-    <div>
+    <div className="text-[14px]">
       {/* Filters */}
       <div className="grid grid-cols-6 gap-2 mb-4">
         {/* Duration Filter */}
-        
-        <div className="flex flex-col">
-          <select
-            className="p-1 border rounded-lg"
-            value={selectedDuration}
-            onChange={handleDurationChange}
-          >
-            <option value="All Time">Duration: All</option>
+          <select className="p-1 border rounded-lg" value={selectedFilters.duration} onChange={handleDurationChange}>
+            <option value="All Time">All Time</option>
             <option value="Last 7 Days">Last 7 Days</option>
             <option value="Last 30 Days">Last 30 Days</option>
             <option value="Last 90 Days">Last 90 Days</option>
-            <option value="Custom Range">custom range</option>
+            <option value="Custom Range">Custom Range</option>
           </select>
-        </div>
-
 
         {/* Type Filter */}
         <select
           className="p-1 border rounded-lg"
-          value={selectedType}
+          value={selectedFilters.type}
           onChange={(e) => handleFilterChange("type", e.target.value)}
         >
           <option value="All">Types: All</option>
@@ -154,73 +164,72 @@ const Filters = ({ tableData, onFilterChange }) => {
         {/* Party Filter */}
         <select
           className="p-1 border rounded-lg"
-          value={selectedParty}
+          value={selectedFilters.party}
           onChange={(e) => handleFilterChange("party", e.target.value)}
         >
-          <option value="All">Parties: All</option>
-          {uniqueParties.map((party, index) => (
-            <option key={index} value={party}>
-              {party}
-            </option>
-          ))}
+          <option value="All">All parties</option>
+          {parties?.map((party, index) => (
+          <option key={index} value={party.partyName}>
+            {party.partyName}
+                    </option>
+                  ))}
         </select>
-
-        {/* Member Filter */}
-        {/* <select
-          className="p-1 border rounded-lg"
-          value={selectedMember}
-          onChange={(e) => handleFilterChange("member", e.target.value)}
-        >
-          <option value="All">Members: All</option>
-          {uniqueMembers.map((member, index) => (
-            <option key={index} value={member}> 
-              {member}
-            </option>
-          ))}
-        </select> */}
 
         {/* Payment Mode Filter */}
         <select
           className="p-1 border rounded-lg"
-          value={selectedPaymentMode}
+          value={selectedFilters.paymentMode}
           onChange={(e) => handleFilterChange("paymentMode", e.target.value)}
         >
-          <option value="All">Payment: All</option>
-          {uniquePaymentModes.map((mode, index) => (
-            <option key={index} value={mode}>
-              {mode}
-            </option>
-          ))}
+          <option value="All">All Payment Modes</option>
+          {paymentModes?.map((paymentMode, index) => (
+          <option key={index} value={paymentMode.paymentMode}>
+            {paymentMode.paymentMode}
+          </option>
+        ))}
         </select>
 
         {/* Category Filter */}
         <select
           className="p-1 border rounded-lg"
-          value={selectedCategory}
+          value={selectedFilters.category}
           onChange={(e) => handleFilterChange("category", e.target.value)}
         >
-          <option value="All">Categories: All</option>
-          {uniqueCategories.map((category, index) => (
-            <option key={index} value={category}>
-              {category}
-            </option>
-          ))}
+          <option value="All">All Category</option>
+          {categories?.map((categoryObj) => (
+          <option key={categoryObj._id} value={categoryObj.category}>
+            {categoryObj.category}
+                    </option>
+                  ))}
         </select>
+
+        {/* Reset Button */}
+        <button
+          className="p-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+          onClick={handleResetFilters}
+        >
+          Reset Filters
+        </button>
       </div>
+
+      {/* Date Modal */}
       <DateModal
         isOpen={isDateModalOpen}
         onClose={handleDateModalClose}
         onApply={handleDateSelection}
-        startDate={startDate}
-        endDate={endDate}
+        startDate={selectedFilters.startDate}
+        endDate={selectedFilters.endDate}
       />
     </div>
   );
 };
 
 Filters.propTypes = {
-  tableData: PropTypes.array.isRequired,
+  filterOptions: PropTypes.object.isRequired,
   onFilterChange: PropTypes.func.isRequired,
+  fetchPartyData: PropTypes.func.isRequired,
+  fetchPaymentData: PropTypes.func.isRequired,
+  fetchCategoryData: PropTypes.func.isRequired
 };
 
 export default Filters;

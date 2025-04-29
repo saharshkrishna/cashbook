@@ -2,20 +2,72 @@ import { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { FiX, FiPlus } from 'react-icons/fi';
 import PartyNameModal from './PartyModal';
+// src/services/loanService.js
+import axios from 'axios';
 
-const LoanModal = ({  isOpen, onClose, onSubmit }) => {
+const API_BASE = "http://localhost:5000/api";
+
+export const addLoan = async (loan) => {
+  console.log("Adding loan data", loan);
+  try {
+    const response = await axios.post(`${API_BASE}/loans`, loan);
+    const newLoan = { ...loan, id: Date.now() }; // Add temporary ID for frontend
+    console.log(response.data.message);
+    return newLoan; // Return the formatted loan data
+  } catch (error) {
+    console.error("Error creating loan:", error);
+    throw error; // Re-throw to handle in component
+  }
+};
+
+export const getLoans = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/loans`);
+    return response.data.loans.map(loan => ({
+      ...loan,
+      id: loan._id // Map MongoDB _id to id for consistency
+    }));
+  } catch (error) {
+    console.error("Error fetching loans:", error);
+    throw error;
+  }
+};
+
+export const updateLoan = async (id, updates) => {
+  try {
+    const response = await axios.put(`${API_BASE}/loans/${id}`, updates);
+    console.log(response.data.message);
+    return { ...updates, id }; // Return updated data
+  } catch (error) {
+    console.error("Error updating loan:", error);
+    throw error;
+  }
+};
+
+export const deleteLoans = async (ids) => {
+  try {
+    const response = await axios.delete(`${API_BASE}/loans`, { data: { ids } });
+    console.log(response.data.message);
+    return ids; // Return deleted IDs
+  } catch (error) {
+    console.error("Error deleting loans:", error);
+    throw error;
+  }
+};
+
+const LoanModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
-    // time: new Date().toLocaleTimeString('en-US', {
-    //   hour: '2-digit',
-    //   minute: '2-digit',
-    //   hour12: true,
-    // }),
-    amount: '',
+    loanTitle: '',
+    loanAmount: '',
+    dailyInterest: '',
+    reimbursementPlan: 'no',
+    loanIssuedBy: '',
     interestRate: '',
     loanTerm: '', // in months
     emi: '',
-    dueDate: '',
+    totalClosingAmount: '',
+    emiDate: '',
     partyName: '',
     remarks: '',
     paymentMode: 'Cash',
@@ -30,39 +82,48 @@ const LoanModal = ({  isOpen, onClose, onSubmit }) => {
   const handleFileChange = (e) => {
     const selectedFiles = e.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
-      setFiles([...files, ...selectedFiles]); // Add new files to the existing list
+      setFiles([...files, ...selectedFiles]);
     }
   }
 
-  // Calculate EMI when amount, interest rate, or loan term changes
+  // Calculate EMI and total closing amount when amount, interest rate, or loan term changes
   useEffect(() => {
-    if (formData.amount && formData.interestRate && formData.loanTerm) {
-      const principal = parseFloat(formData.amount);
-      const ratePerMonth = parseFloat(formData.interestRate) / (12 * 100); // Convert annual rate to monthly
+    if (formData.reimbursementPlan === 'yes' && formData.loanAmount && formData.interestRate && formData.loanTerm) {
+      const principal = parseFloat(formData.loanAmount);
+      const ratePerMonth = parseFloat(formData.interestRate) / (12 * 100);
       const numberOfPayments = parseFloat(formData.loanTerm);
 
-      // EMI = P * r * (1 + r)^n / ((1 + r)^n - 1)
+      // EMI calculation
       const emi = (principal * ratePerMonth * Math.pow(1 + ratePerMonth, numberOfPayments)) /
                  (Math.pow(1 + ratePerMonth, numberOfPayments) - 1);
 
-      setFormData(prev => ({
-        ...prev,
-        emi: emi.toFixed(2)
-      }));
-    }
-  }, [formData.amount, formData.interestRate, formData.loanTerm]);
+      // Total closing amount (principal + total interest)
+      const totalInterest = emi * numberOfPayments - principal;
+      const totalClosing = principal + totalInterest;
 
-  // Calculate due date based on loan term
-  useEffect(() => {
-    if (formData.date && formData.loanTerm) {
-      const startDate = new Date(formData.date);
-      const dueDate = new Date(startDate.setMonth(startDate.getMonth() + parseInt(formData.loanTerm)));
       setFormData(prev => ({
         ...prev,
-        dueDate: dueDate.toISOString().split('T')[0]
+        emi: emi.toFixed(2),
+        totalClosingAmount: totalClosing.toFixed(2)
       }));
     }
-  }, [formData.date, formData.loanTerm]);
+  }, [formData.loanAmount, formData.interestRate, formData.loanTerm, formData.reimbursementPlan]);
+
+  // Calculate EMI date (first payment date)
+  useEffect(() => {
+    if (formData.date) {
+      const startDate = new Date(formData.date);
+      const emiDate = new Date(startDate.setMonth(startDate.getMonth() + 1));
+      setFormData(prev => ({
+        ...prev,
+        emiDate: emiDate.toISOString().split('T')[0]
+      }));
+    }
+  }, [formData.date]);
+
+  const handleRemoveFile = (index) => {
+    setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
+  };
 
   const handleAmountChange = (e) => {
     const value = e.target.value;
@@ -71,17 +132,21 @@ const LoanModal = ({  isOpen, onClose, onSubmit }) => {
       return;
     }
     setError('');
-    setFormData(prev => ({ ...prev, amount: value }));
+    setFormData(prev => ({ ...prev, loanAmount: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.amount || !formData.interestRate || !formData.loanTerm) {
+    if (!formData.loanTitle || !formData.loanAmount) {
       setError('Please fill in all required fields');
       return;
     }
-    onSubmit(formData); // Call the onSubmit function with the form data
-    onClose(); // Close the modal
+    if (formData.reimbursementPlan === 'yes' && (!formData.interestRate || !formData.loanTerm)) {
+      setError('For reimbursement plans, please fill in interest rate and loan term');
+      return;
+    }
+    onSubmit(formData);
+    onClose();
   };
 
   const handleAddPartyName = (partyData) => {
@@ -117,19 +182,24 @@ const LoanModal = ({  isOpen, onClose, onSubmit }) => {
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
+                  className="w-3/4 p-2 border rounded-lg"
                   required
                 />
               </div>
-              {/* <div>
-                <label className="block text-sm font-medium text-gray-700">Time</label>
-                <input
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                />
-              </div> */}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Loan Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Enter loan title/description"
+                value={formData.loanTitle}
+                onChange={(e) => setFormData(prev => ({ ...prev, loanTitle: e.target.value }))}
+                className="w-full p-2 border rounded-lg"
+                required
+              />
             </div>
 
             <div>
@@ -139,7 +209,7 @@ const LoanModal = ({  isOpen, onClose, onSubmit }) => {
               <input
                 type="number"
                 placeholder="Enter loan amount"
-                value={formData.amount}
+                value={formData.loanAmount}
                 onChange={handleAmountChange}
                 className="w-full p-2 border rounded-lg"
                 required
@@ -147,59 +217,132 @@ const LoanModal = ({  isOpen, onClose, onSubmit }) => {
               {error && <div className="mt-1 text-sm text-red-500">{error}</div>}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Interest Rate (% per year) <span className="text-red-500">*</span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Daily Interest (%)
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="Enter daily interest rate"
+                value={formData.dailyInterest}
+                onChange={(e) => setFormData(prev => ({ ...prev, dailyInterest: e.target.value }))}
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Reimbursement Plan
+              </label>
+              <div className="flex items-center space-x-4 mt-2">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    className="form-radio"
+                    name="reimbursementPlan"
+                    value="yes"
+                    checked={formData.reimbursementPlan === 'yes'}
+                    onChange={() => setFormData(prev => ({ ...prev, reimbursementPlan: 'yes' }))}
+                  />
+                  <span className="ml-2">Yes</span>
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Enter interest rate"
-                  value={formData.interestRate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, interestRate: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Loan Term (months) <span className="text-red-500">*</span>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    className="form-radio"
+                    name="reimbursementPlan"
+                    value="no"
+                    checked={formData.reimbursementPlan === 'no'}
+                    onChange={() => setFormData(prev => ({ ...prev, reimbursementPlan: 'no' }))}
+                  />
+                  <span className="ml-2">No</span>
                 </label>
-                <input
-                  type="number"
-                  placeholder="Enter loan term"
-                  value={formData.loanTerm}
-                  onChange={(e) => setFormData(prev => ({ ...prev, loanTerm: e.target.value }))}
-                  className="w-full p-2 border rounded-lg"
-                  required
-                />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Monthly EMI
-                </label>
-                <input
-                  type="text"
-                  value={formData.emi}
-                  className="w-full p-2 border rounded-lg bg-gray-50"
-                  readOnly
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.dueDate}
-                  className="w-full p-2 border rounded-lg bg-gray-50"
-                  readOnly
-                />
-              </div>
+            {formData.reimbursementPlan === 'yes' && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Interest Rate (% per year) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter annual interest rate"
+                      value={formData.interestRate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, interestRate: e.target.value }))}
+                      className="w-full p-2 border rounded-lg"
+                      required={formData.reimbursementPlan === 'yes'}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Loan Term (months) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Enter loan term in months"
+                      value={formData.loanTerm}
+                      onChange={(e) => setFormData(prev => ({ ...prev, loanTerm: e.target.value }))}
+                      className="w-full p-2 border rounded-lg"
+                      required={formData.reimbursementPlan === 'yes'}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Monthly EMI
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.emi}
+                      className="w-full p-2 border rounded-lg bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Total Closing Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.totalClosingAmount}
+                      className="w-full p-2 border rounded-lg bg-gray-50"
+                      readOnly
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Date of First EMI
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.emiDate}
+                    className="w-full p-2 border rounded-lg bg-gray-50"
+                    readOnly
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Loan Issued By
+              </label>
+              <input
+                type="text"
+                placeholder="Enter issuer name"
+                value={formData.loanIssuedBy}
+                onChange={(e) => setFormData(prev => ({ ...prev, loanIssuedBy: e.target.value }))}
+                className="w-full p-2 border rounded-lg"
+              />
             </div>
 
             <div>
@@ -251,57 +394,73 @@ const LoanModal = ({  isOpen, onClose, onSubmit }) => {
               </select>
             </div>
 
-             {/* Attach Bills Button */}
-             <div className="flex items-center space-x-2">
-                <input
-                  type="file"
-                  id="fileInput"
-                  style={{ display: "none" }} // Hide the file input
-                  onChange={handleFileChange}
-                  multiple // Allow multiple files to be selected
-                />
-                <button
-                  type="button"
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-                  onClick={() => document.getElementById("fileInput").click()} // Trigger file input click
-                >
-                  📎 Attach Bills
-                </button>
-                {formData.bills && formData.bills.length > 0 && (
-                    <span className="text-sm text-gray-500">({formData.bills.length} files attached)</span>
-                  )
-                  }
-                  
+            {/* File Upload & Save Button in One Row */}
+<div className="flex justify-between items-center mt-4">
+  
+  {/* Attach Bills Section - Aligned Left */}
+  <div className="flex items-center gap-3">
+    <input
+      type="file"
+      id="fileInput"
+      style={{ display: "none" }}
+      onChange={handleFileChange}
+      multiple
+    />
 
-                <span className="text-sm text-gray-500">
-                  {/* Optional: Add a message or file count here */}
-                </span>
-                <div className="mt-2">
-                    {files.map((file, index) => (
-                    <div key={index} className="text-sm text-gray-700">
-                      {file.name}
-              </div>
-                  ))}
-              </div>
-            </div>
+    <button
+      type="button"
+      className="px-4 py-2 bg-blue-500 text-white rounded-lg shrink-0"
+      onClick={() => document.getElementById("fileInput").click()}
+    >
+      📎 Attach Bills
+    </button>
 
-            <div className="flex space-x-4">
-            <button
-          onClick={handleSubmit}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-        >
-          Submit
-        </button>
-            </div>
+    {/* Show Number of Files Instead of Expanding Button */}
+    {files.length > 0 && (
+      <span className="text-sm text-gray-500 whitespace-nowrap">
+        ({files.length} files selected)
+      </span>
+    )}
+  </div>
+
+  {/* Save Button - Aligned Right */}
+  <div>
+    <button
+      type="submit"
+      className="px-4 py-2 bg-green-600 text-white rounded-lg"
+    >
+      Save
+    </button>
+  </div>
+</div>
+
+{/* File List (Fixed Height to Prevent Button Movement) */}
+<div className="mt-2 min-h-[40px]">
+  {files.length > 0 && (
+    <div className="flex flex-wrap gap-2">
+      {files.map((file, index) => (
+        <div key={index} className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
+          <span className="text-sm text-gray-700 truncate max-w-[150px]">{file.name}</span>
+          <button
+            onClick={() => handleRemoveFile(index)}
+            className="text-sm text-red-500 hover:underline"
+          >
+            ❌
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
           </form>
         </div>
       </div>
-       {isPartyModalOpen && (
-              <PartyNameModal
-                onClose={() => setIsPartyModalOpen(false)}
-                onAdd={handleAddPartyName}
-              />
-            )}
+      {isPartyModalOpen && (
+        <PartyNameModal
+          onClose={() => setIsPartyModalOpen(false)}
+          onAdd={handleAddPartyName}
+        />
+      )}
     </div>
   );
 };

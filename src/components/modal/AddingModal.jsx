@@ -1,28 +1,65 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import PropTypes from "prop-types";
+import axios from "axios";
+import { DataContext } from "../../context/DataContext";
 
-const AddEntryModal = ({ title, placeholder, onAdd, onClose }) => {
+const AddEntryModal = ({ entryType, onClose }) => {
+  const { categories, setCategories, paymentModes, setPaymentModes } = useContext(DataContext);
   const [newValue, setNewValue] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleAdd = () => {
-    if (newValue.trim() !== "") {
-      onAdd(newValue); // Pass the new value to the parent component
-      setNewValue(""); // Clear the input
-      onClose(); // Close the modal
+  const title = entryType === "category" ? "Add New Category" : "Add New Payment Mode";
+  const placeholder = entryType === "category" ? "Enter category name" : "Enter payment mode";
+
+  const   handleSubmit = async () => {
+    if (!newValue.trim()) {
+      setError("Field cannot be empty.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (entryType === "category") {
+        const response = await axios.post("http://localhost:5000/api/user/category", { Category: newValue });
+        console.log("Category Response:", response.data.newCategory);
+        setCategories((prev) => [...prev, response.data.newCategory]); // Adds full object
+      } else if (entryType === "paymentMode") {
+        console.log("Sending payment mode:", { paymentMode: newValue });
+        const response = await axios.post("http://localhost:5000/api/user/paymentMode", { paymentMode: newValue });
+        console.log("Payment Mode Response:", response.data.newPaymentMode);
+        setPaymentModes((prev) => [...prev, response.data.newPaymentMode]); // Adds full object
+      }
+
+      setNewValue("");
+      onClose();
+    } catch (err) {
+      setError("Failed to add entry. Please try again.");
+      console.error("Error adding entry:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-      <div className="bg-white p-6 rounded-lg w-1/3">
+    <div
+      id="modal-overlay"
+      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center"
+      onClick={onClose}
+    >
+      <div className="bg-white p-6 rounded-lg w-full max-w-md shadow-lg"
+       onClick={(e) => e.stopPropagation()}
+      >
         <h2 className="text-xl font-semibold mb-4">{title}</h2>
         <input
           type="text"
           placeholder={placeholder}
           value={newValue}
           onChange={(e) => setNewValue(e.target.value)}
-          className="w-full p-2 border rounded-lg mb-4"
+          className="w-full p-2 border rounded-lg mb-2"
         />
+        {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
@@ -31,21 +68,19 @@ const AddEntryModal = ({ title, placeholder, onAdd, onClose }) => {
             Cancel
           </button>
           <button
-            onClick={handleAdd}
+            onClick={handleSubmit}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+            disabled={loading}
           >
-            Add
+            {loading ? "Adding..." : "Add"}
           </button>
         </div>
       </div>
     </div>
   );
 };
-
 AddEntryModal.propTypes = {
-  title: PropTypes.string.isRequired,
-  placeholder: PropTypes.string.isRequired,
-  onAdd: PropTypes.func.isRequired,
+  entryType: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
 };
 

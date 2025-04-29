@@ -17,7 +17,7 @@ const Pagination = ({ totalRows, rowsPerPage, currentPage, setCurrentPage }) => 
   };
 
   return (
-    <div className="flex items-center justify-between p-4 border-t">
+    <div className="flex items-center justify-between p-4 text-[13px] border-t">
       <div>
         Showing {Math.min((currentPage - 1) * rowsPerPage + 1, totalRows)} -{" "}
         {Math.min(currentPage * rowsPerPage, totalRows)} of {totalRows} entries

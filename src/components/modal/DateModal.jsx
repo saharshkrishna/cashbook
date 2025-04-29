@@ -1,21 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 
 const DateSelectionModal = ({ isOpen, onClose, onApply, startDate, endDate }) => {
-  const [localStartDate, setLocalStartDate] = useState(startDate);
-  const [localEndDate, setLocalEndDate] = useState(endDate);
+  const [localStartDate, setLocalStartDate] = useState(startDate || "");
+  const [localEndDate, setLocalEndDate] = useState(endDate || "");
   const [singleDate, setSingleDate] = useState("");
-  const [dateOption, setDateOption] = useState("single"); // State to toggle between single day and date range
+  const [dateOption, setDateOption] = useState("single"); // Default to single date
+
+  // 🛠 Sync state when modal opens or props change
+  useEffect(() => {
+    if (isOpen) {
+      setLocalStartDate(startDate || "");
+      setLocalEndDate(endDate || "");
+    }
+  }, [isOpen, startDate, endDate]);
 
   const handleApply = () => {
     if (dateOption === "single" && singleDate) {
-      // If single date is selected, treat it as both start and end date
       onApply({ startDate: singleDate, endDate: singleDate });
     } else if (dateOption === "range" && localStartDate && localEndDate) {
-      // If date range is selected, pass both start and end dates
       onApply({ startDate: localStartDate, endDate: localEndDate });
     }
-    onClose(); // Close the modal after applying
+    onClose(); // Close modal after applying
   };
 
   if (!isOpen) return null;
@@ -82,16 +88,10 @@ const DateSelectionModal = ({ isOpen, onClose, onApply, startDate, endDate }) =>
         )}
 
         <div className="flex justify-end gap-2">
-          <button
-            onClick={handleApply}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg"
-          >
+          <button onClick={handleApply} className="px-4 py-2 bg-blue-500 text-white rounded-lg">
             Apply
           </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-black rounded-lg"
-          >
+          <button onClick={onClose} className="px-4 py-2 bg-gray-300 text-black rounded-lg">
             Close
           </button>
         </div>

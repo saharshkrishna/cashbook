@@ -8,13 +8,23 @@ import CashoutModal from "./modal/CashoutModal";
 import CreditModal from "./modal/CreditModal";
 import DebitModal from "./modal/DebitModal";
 
-const Search = () => {
+const Search = ({ onSearch }) => {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    onSearch(value); // Pass the search term to the parent component
+  };
+
   return (
     <div className="relative flex-grow">
       <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
       <input
         type="text"
         placeholder="Search by remark or amount..."
+        value={searchTerm}
+        onChange={handleSearchChange}
         className="w-[300px] pl-10 pr-4 py-2 border rounded-lg"
       />
     </div>
@@ -150,10 +160,10 @@ const Actnbtn = ({ addEntry }) => {
   );
 };
 
-const SearchAndActions = ({ addEntry }) => {
+const SearchAndActions = ({ addEntry,onSearch }) => {
   return (
     <div className="flex items-center gap-4 mb-6">
-      <Search />
+      <Search onSearch={onSearch} />
       <Actnbtn addEntry={addEntry} />
     </div>
   );
@@ -161,10 +171,12 @@ const SearchAndActions = ({ addEntry }) => {
 
 SearchAndActions.propTypes = {
   addEntry: PropTypes.func.isRequired,
+  onSearch: PropTypes.func.isRequired,
 };
 
 Actnbtn.propTypes = {
   addEntry: PropTypes.func.isRequired,
+
 };
 
 export default SearchAndActions;
